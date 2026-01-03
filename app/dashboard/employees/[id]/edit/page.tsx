@@ -1,163 +1,264 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Save, User, Briefcase, MapPin, Loader2 } from "lucide-react";
-import { mockEmployees, departments, designations, Employee } from "@/lib/data/employees";
+import { ArrowLeft, Save, User, Briefcase, MapPin, Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { useUser } from "@/lib/context/user-context";
+import { createClient } from "@/lib/supabase/client";
+import { updateEmployeeInfo } from "@/lib/actions/auth";
 
-export default function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
+const DEPARTMENTS = [
+    "Management",
+    "Engineering",
+    "Product",
+    "Design",
+    "HR",
+    "Finance",
+    "Sales",
+    "Marketing",
+    "Support",
+];
+
+const ROLES = [
+    { value: "admin", label: "Admin" },
+    { value: "hr", label: "HR" },
+    { value: "employee", label: "Employee" },
+];
+
+interface EmployeeData {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string | null;
+    designation: string | null;
+    department: string | null;
+    joining_date: string | null;
+    location: string | null;
+    role: string;
+}
+
+export default function EditEmployeePage() {
+    const params = useParams();
     const router = useRouter();
-    const [id, setId] = useState<string | null>(null);
-    const [employee, setEmployee] = useState<Employee | null>(null);
+    const { user, isLoading: userLoading, canManageEmployees } = useUser();
+    
+    const [employee, setEmployee] = useState<EmployeeData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
+    
     const [formData, setFormData] = useState({
         firstName: "",
         lastName: "",
         email: "",
         phone: "",
-        department: "",
         designation: "",
+        department: "",
         joiningDate: "",
-        salary: "",
-        address: "",
-        emergencyContact: "",
-        manager: "",
-        status: "Active" as "Active" | "On Leave" | "Inactive",
+        location: "",
+        role: "employee",
     });
 
-    useEffect(() => {
-        params.then(({ id: paramId }) => {
-            setId(paramId);
-            const emp = mockEmployees.find((e) => e.id === paramId);
-            if (emp) {
-                setEmployee(emp);
-                setFormData({
-                    firstName: emp.firstName,
-                    lastName: emp.lastName,
-                    email: emp.email,
-                    phone: emp.phone,
-                    department: emp.department,
-                    designation: emp.designation,
-                    joiningDate: emp.joiningDate,
-                    salary: emp.salary?.toString() || "",
-                    address: emp.address || "",
-                    emergencyContact: emp.emergencyContact || "",
-                    manager: emp.manager || "",
-                    status: emp.status,
-                });
-            }
-            setIsLoading(false);
-        });
-    }, [params]);
+    const id = params.id as string;
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    // Redirect if not authorized
+    useEffect(() => {
+        if (!userLoading && !canManageEmployees) {
+            router.push(`/dashboard/employees/${id}`);
+        }
+    }, [userLoading, canManageEmployees, id, router]);
+
+    // Fetch employee data
+    useEffect(() => {
+        const fetchEmployee = async () => {
+            if (!user || !id) return;
+
+            const supabase = createClient();
+
+            const { data, error: fetchError } = await supabase
+                .from("profiles")
+                .select("*")
+                .eq("id", id)
+                .eq("company_id", user.company_id)
+                .single();
+
+            if (fetchError || !data) {
+                setError("Failed to load employee data");
+                setIsLoading(false);
+                return;
+            }
+
+            setEmployee(data);
+            setFormData({
+                firstName: data.first_name || "",
+                lastName: data.last_name || "",
+                email: data.email || "",
+                phone: data.phone || "",
+                designation: data.designation || "",
+                department: data.department || "",
+                joiningDate: data.joining_date || "",
+                location: data.location || "",
+                role: data.role || "employee",
+            });
+            setIsLoading(false);
+        };
+
+        if (!userLoading && user && canManageEmployees) {
+            fetchEmployee();
+        }
+    }, [id, user, userLoading, canManageEmployees]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError(null);
+        setSuccess(false);
         setIsSubmitting(true);
 
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        try {
+            const formDataObj = new FormData();
+            formDataObj.append("firstName", formData.firstName);
+            formDataObj.append("lastName", formData.lastName);
+            formDataObj.append("email", formData.email);
+            formDataObj.append("phone", formData.phone);
+            formDataObj.append("designation", formData.designation);
+            formDataObj.append("department", formData.department);
+            formDataObj.append("joiningDate", formData.joiningDate);
+            formDataObj.append("location", formData.location);
+            formDataObj.append("role", formData.role);
 
-        // In production, update in Supabase here
-        console.log("Updated employee data:", formData);
+            const result = await updateEmployeeInfo(id, formDataObj);
 
-        // Redirect to employee profile
-        router.push(`/dashboard/employees/${id}`);
+            if (result.success) {
+                setSuccess(true);
+                setTimeout(() => {
+                    router.push(`/dashboard/employees/${id}`);
+                }, 2000);
+            } else {
+                setError(result.error || "Failed to update employee");
+            }
+        } catch (err) {
+            setError("An error occurred while updating the employee");
+            console.error(err);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    if (isLoading) {
+    if (userLoading || isLoading) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
-                <Loader2 className="h-8 w-8 text-indigo-400 animate-spin" />
+                <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
             </div>
         );
     }
 
-    if (!employee) {
+    if (!canManageEmployees) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-                <p className="text-white text-lg">Employee not found</p>
-                <Link href="/dashboard/employees">
-                    <Button className="bg-indigo-500 hover:bg-indigo-600 text-white">
-                        Back to Employees
-                    </Button>
+                <AlertCircle className="h-12 w-12 text-red-500" />
+                <p className="text-lg font-semibold text-slate-800">Access Denied</p>
+                <p className="text-slate-600">You don't have permission to edit this employee</p>
+                <Link href={`/dashboard/employees/${id}`}>
+                    <Button>Go Back</Button>
                 </Link>
             </div>
         );
     }
 
+    if (error && !employee) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+                <AlertCircle className="h-12 w-12 text-red-500" />
+                <p className="text-lg font-semibold text-slate-800">{error}</p>
+                <Link href="/dashboard/employees">
+                    <Button>Back to Employees</Button>
+                </Link>
+            </div>
+        );
+    }
+
+    if (!employee) return null;
+
     return (
-        <div className="flex flex-col gap-6 max-w-4xl">
+        <div className="max-w-4xl mx-auto">
             {/* Page Header */}
-            <div className="flex items-center gap-4">
-                <Link href={`/dashboard/employees/${id}`}>
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="border-slate-700 text-slate-300 hover:bg-slate-700"
-                    >
+            <div className="flex items-center gap-4 mb-6">
+                <Link href={`/dashboard/employees/${id}`} className="inline-flex">
+                    <Button variant="outline" size="icon">
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
                 </Link>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-white">Edit Employee</h1>
-                    <p className="text-slate-400">Update information for {employee.firstName} {employee.lastName}</p>
+                    <h1 className="text-3xl font-bold text-slate-800">Edit Employee</h1>
+                    <p className="text-slate-600">Update information for {employee.first_name} {employee.last_name}</p>
                 </div>
             </div>
 
+            {/* Success Message */}
+            {success && (
+                <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-3">
+                    <CheckCircle className="h-5 w-5 text-emerald-600" />
+                    <p className="text-emerald-800 font-medium">Employee information updated successfully!</p>
+                </div>
+            )}
+
+            {/* Error Message */}
+            {error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+                    <AlertCircle className="h-5 w-5 text-red-600" />
+                    <p className="text-red-800 font-medium">{error}</p>
+                </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Personal Information */}
-                <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
-                    <CardHeader>
-                        <CardTitle className="text-white flex items-center gap-2">
-                            <User className="h-5 w-5 text-indigo-400" />
-                            Personal Information
-                        </CardTitle>
-                        <CardDescription className="text-slate-400">
-                            Basic details about the employee
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-6 sm:grid-cols-2">
-                        <div className="space-y-2">
-                            <Label htmlFor="firstName" className="text-slate-300">First Name *</Label>
+                {/* Personal Information Card */}
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                    <div className="flex items-center gap-2 mb-6">
+                        <User className="h-5 w-5 text-indigo-600" />
+                        <h2 className="text-lg font-semibold text-slate-800">Personal Information</h2>
+                    </div>
+                    <div className="grid gap-6 md:grid-cols-2">
+                        <div>
+                            <Label htmlFor="firstName" className="text-slate-700">
+                                First Name <span className="text-red-500">*</span>
+                            </Label>
                             <Input
                                 id="firstName"
                                 name="firstName"
                                 value={formData.firstName}
                                 onChange={handleChange}
                                 required
-                                className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500"
+                                className="mt-2"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="lastName" className="text-slate-300">Last Name *</Label>
+                        <div>
+                            <Label htmlFor="lastName" className="text-slate-700">
+                                Last Name <span className="text-red-500">*</span>
+                            </Label>
                             <Input
                                 id="lastName"
                                 name="lastName"
                                 value={formData.lastName}
                                 onChange={handleChange}
                                 required
-                                className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500"
+                                className="mt-2"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="email" className="text-slate-300">Email Address *</Label>
+                        <div>
+                            <Label htmlFor="email" className="text-slate-700">
+                                Email <span className="text-red-500">*</span>
+                            </Label>
                             <Input
                                 id="email"
                                 name="email"
@@ -165,170 +266,130 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
                                 value={formData.email}
                                 onChange={handleChange}
                                 required
-                                className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500"
+                                className="mt-2"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="phone" className="text-slate-300">Phone Number *</Label>
+                        <div>
+                            <Label htmlFor="phone" className="text-slate-700">
+                                Phone
+                            </Label>
                             <Input
                                 id="phone"
                                 name="phone"
                                 value={formData.phone}
                                 onChange={handleChange}
-                                required
-                                className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500"
+                                className="mt-2"
                             />
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
 
-                {/* Employment Details */}
-                <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
-                    <CardHeader>
-                        <CardTitle className="text-white flex items-center gap-2">
-                            <Briefcase className="h-5 w-5 text-indigo-400" />
-                            Employment Details
-                        </CardTitle>
-                        <CardDescription className="text-slate-400">
-                            Job-related information
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-6 sm:grid-cols-2">
-                        <div className="space-y-2">
-                            <Label htmlFor="department" className="text-slate-300">Department *</Label>
+                {/* Employment Information Card */}
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                    <div className="flex items-center gap-2 mb-6">
+                        <Briefcase className="h-5 w-5 text-indigo-600" />
+                        <h2 className="text-lg font-semibold text-slate-800">Employment Information</h2>
+                    </div>
+                    <div className="grid gap-6 md:grid-cols-2">
+                        <div>
+                            <Label htmlFor="role" className="text-slate-700">
+                                Role <span className="text-red-500">*</span>
+                            </Label>
+                            <select
+                                id="role"
+                                name="role"
+                                value={formData.role}
+                                onChange={handleChange}
+                                required
+                                className="w-full mt-2 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                {ROLES.map((role) => (
+                                    <option key={role.value} value={role.value}>
+                                        {role.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <Label htmlFor="designation" className="text-slate-700">
+                                Designation
+                            </Label>
+                            <Input
+                                id="designation"
+                                name="designation"
+                                value={formData.designation}
+                                onChange={handleChange}
+                                placeholder="e.g., Manager, Developer"
+                                className="mt-2"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="department" className="text-slate-700">
+                                Department
+                            </Label>
                             <select
                                 id="department"
                                 name="department"
                                 value={formData.department}
                                 onChange={handleChange}
-                                required
-                                className="w-full h-10 px-3 rounded-md bg-slate-900/50 border border-slate-700 text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                className="w-full mt-2 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             >
-                                <option value="">Select department</option>
-                                {departments.map((dept) => (
-                                    <option key={dept} value={dept}>{dept}</option>
+                                <option value="">Select Department</option>
+                                {DEPARTMENTS.map((dept) => (
+                                    <option key={dept} value={dept}>
+                                        {dept}
+                                    </option>
                                 ))}
                             </select>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="designation" className="text-slate-300">Designation *</Label>
-                            <select
-                                id="designation"
-                                name="designation"
-                                value={formData.designation}
-                                onChange={handleChange}
-                                required
-                                className="w-full h-10 px-3 rounded-md bg-slate-900/50 border border-slate-700 text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                            >
-                                <option value="">Select designation</option>
-                                {designations.map((desig) => (
-                                    <option key={desig} value={desig}>{desig}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="status" className="text-slate-300">Status *</Label>
-                            <select
-                                id="status"
-                                name="status"
-                                value={formData.status}
-                                onChange={handleChange}
-                                required
-                                className="w-full h-10 px-3 rounded-md bg-slate-900/50 border border-slate-700 text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                            >
-                                <option value="Active">Active</option>
-                                <option value="On Leave">On Leave</option>
-                                <option value="Inactive">Inactive</option>
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="joiningDate" className="text-slate-300">Joining Date *</Label>
+                        <div>
+                            <Label htmlFor="joiningDate" className="text-slate-700">
+                                Joining Date
+                            </Label>
                             <Input
                                 id="joiningDate"
                                 name="joiningDate"
                                 type="date"
                                 value={formData.joiningDate}
                                 onChange={handleChange}
-                                required
-                                className="bg-slate-900/50 border-slate-700 text-white focus:border-indigo-500 [color-scheme:dark]"
+                                className="mt-2"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="salary" className="text-slate-300">Salary (Monthly)</Label>
-                            <Input
-                                id="salary"
-                                name="salary"
-                                type="number"
-                                value={formData.salary}
-                                onChange={handleChange}
-                                className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="manager" className="text-slate-300">Reporting Manager</Label>
-                            <Input
-                                id="manager"
-                                name="manager"
-                                value={formData.manager}
-                                onChange={handleChange}
-                                className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500"
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
 
-                {/* Contact Information */}
-                <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
-                    <CardHeader>
-                        <CardTitle className="text-white flex items-center gap-2">
-                            <MapPin className="h-5 w-5 text-indigo-400" />
-                            Additional Information
-                        </CardTitle>
-                        <CardDescription className="text-slate-400">
-                            Address and emergency contact
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-6 sm:grid-cols-2">
-                        <div className="space-y-2 sm:col-span-2">
-                            <Label htmlFor="address" className="text-slate-300">Address</Label>
-                            <textarea
-                                id="address"
-                                name="address"
-                                value={formData.address}
-                                onChange={handleChange}
-                                rows={3}
-                                className="w-full px-3 py-2 rounded-md bg-slate-900/50 border border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
-                            />
-                        </div>
-                        <div className="space-y-2 sm:col-span-2">
-                            <Label htmlFor="emergencyContact" className="text-slate-300">Emergency Contact</Label>
-                            <Input
-                                id="emergencyContact"
-                                name="emergencyContact"
-                                value={formData.emergencyContact}
-                                onChange={handleChange}
-                                placeholder="Name and phone number"
-                                className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500"
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* Location Card */}
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                    <div className="flex items-center gap-2 mb-6">
+                        <MapPin className="h-5 w-5 text-indigo-600" />
+                        <h2 className="text-lg font-semibold text-slate-800">Location</h2>
+                    </div>
+                    <div>
+                        <Label htmlFor="location" className="text-slate-700">
+                            Work Location
+                        </Label>
+                        <Input
+                            id="location"
+                            name="location"
+                            value={formData.location}
+                            onChange={handleChange}
+                            placeholder="e.g., New York, Remote, Mumbai"
+                            className="mt-2"
+                        />
+                    </div>
+                </div>
 
                 {/* Form Actions */}
                 <div className="flex items-center justify-end gap-4">
                     <Link href={`/dashboard/employees/${id}`}>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            className="border-slate-700 text-slate-300 hover:bg-slate-700"
-                        >
+                        <Button type="button" variant="outline">
                             Cancel
                         </Button>
                     </Link>
                     <Button
                         type="submit"
                         disabled={isSubmitting}
-                        className="bg-indigo-500 hover:bg-indigo-600 text-white gap-2"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2"
                     >
                         <Save className="h-4 w-4" />
                         {isSubmitting ? "Saving..." : "Save Changes"}

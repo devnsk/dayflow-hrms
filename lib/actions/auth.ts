@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -220,7 +221,7 @@ export async function createEmployee(formData: FormData) {
         // Get company info
         const { data: company } = await supabase
             .from('companies')
-            .select('code')
+            .select('code, name')
             .eq('id', currentProfile.company_id)
             .single();
 
@@ -245,8 +246,9 @@ export async function createEmployee(formData: FormData) {
         // Generate temporary password
         const tempPassword = generateTempPassword();
 
-        // Create auth user for this employee
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        // Create auth user for this employee using Admin client
+        const supabaseAdmin = createAdminClient();
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
             email,
             password: tempPassword,
             email_confirm: true, // Auto-confirm email
@@ -257,8 +259,6 @@ export async function createEmployee(formData: FormData) {
         });
 
         if (authError) {
-            // If admin API fails, try regular signup with service role
-            // This is a fallback - in production you'd use the admin API
             console.error("Admin auth error:", authError);
             return { error: "Failed to create user authentication: " + authError.message };
         }
@@ -267,10 +267,11 @@ export async function createEmployee(formData: FormData) {
             return { error: "Failed to create user" };
         }
 
-        // Create profile
-        const { error: newProfileError } = await supabase
+        // Create profile using Admin client (bypassing RLS)
+        // Use upsert in case a trigger already created a skeleton profile on auth.signup
+        const { error: newProfileError } = await supabaseAdmin
             .from('profiles')
-            .insert({
+            .upsert({
                 id: authData.user.id,
                 company_id: currentProfile.company_id,
                 employee_id: employeeId,
@@ -285,6 +286,7 @@ export async function createEmployee(formData: FormData) {
                 status: 'Active',
                 attendance_status: 'absent',
                 is_first_login: true, // Employee must change password on first login
+                temporary_password: tempPassword, // Store for admin reference
             });
 
         if (newProfileError) {
@@ -306,6 +308,185 @@ export async function createEmployee(formData: FormData) {
         return { error: "An unexpected error occurred" };
     }
 }
+
+/**
+ * Update employee password (Admin only)
+ */
+export async function updateEmployeePassword(employeeId: string, newPassword: string) {
+    const supabase = await createClient();
+
+    // Get current user and verify they are admin
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { error: "Not authenticated" };
+    }
+
+    // Get current user's profile to check role
+    const { data: currentProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role, company_id')
+        .eq('id', user.id)
+        .single();
+
+    if (profileError || !currentProfile) {
+        return { error: "Failed to get user profile" };
+    }
+
+    if (currentProfile.role !== 'admin' && currentProfile.role !== 'hr') {
+        return { error: "Only Admin or HR can update employee passwords" };
+    }
+
+    // Validate password
+    if (!newPassword || newPassword.length < 8) {
+        return { error: "Password must be at least 8 characters long" };
+    }
+
+    try {
+        // Get employee profile to verify they're in the same company
+        const { data: employeeProfile, error: employeeError } = await supabase
+            .from('profiles')
+            .select('id, company_id, email')
+            .eq('id', employeeId)
+            .single();
+
+        if (employeeError || !employeeProfile) {
+            return { error: "Employee not found" };
+        }
+
+        if (employeeProfile.company_id !== currentProfile.company_id) {
+            return { error: "Cannot update password for employee in different company" };
+        }
+
+        // Use admin client to update password
+        const supabaseAdmin = createAdminClient();
+        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(employeeId, {
+            password: newPassword,
+        });
+
+        if (updateError) {
+            console.error("Password update error:", updateError);
+            return { error: "Failed to update password: " + updateError.message };
+        }
+
+        // Update temporary_password in profiles table
+        const { error: profileUpdateError } = await supabaseAdmin
+            .from('profiles')
+            .update({ temporary_password: newPassword })
+            .eq('id', employeeId);
+
+        if (profileUpdateError) {
+            console.error("Profile update error:", profileUpdateError);
+            return { error: "Password updated but failed to store reference" };
+        }
+
+        revalidatePath('/dashboard/employees');
+
+        return {
+            success: true,
+            message: `Password updated successfully for ${employeeProfile.email}`,
+        };
+
+    } catch (error) {
+        console.error("Update password error:", error);
+        return { error: "An unexpected error occurred" };
+    }
+}
+
+/**
+ * Update employee profile information (Admin/HR only)
+ */
+export async function updateEmployeeInfo(employeeId: string, formData: FormData) {
+    const supabase = await createClient();
+
+    // Get current user and verify they are admin/hr
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { error: "Not authenticated" };
+    }
+
+    // Get current user's profile to check role
+    const { data: currentProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role, company_id')
+        .eq('id', user.id)
+        .single();
+
+    if (profileError || !currentProfile) {
+        return { error: "Failed to get user profile" };
+    }
+
+    if (currentProfile.role !== 'admin' && currentProfile.role !== 'hr') {
+        return { error: "Only Admin or HR can update employee information" };
+    }
+
+    // Get employee to verify they're in the same company
+    const { data: employee, error: employeeError } = await supabase
+        .from('profiles')
+        .select('id, company_id')
+        .eq('id', employeeId)
+        .single();
+
+    if (employeeError || !employee) {
+        return { error: "Employee not found" };
+    }
+
+    if (employee.company_id !== currentProfile.company_id) {
+        return { error: "Cannot update employee from different company" };
+    }
+
+    const firstName = formData.get("firstName") as string;
+    const lastName = formData.get("lastName") as string;
+    const email = formData.get("email") as string;
+    const phone = formData.get("phone") as string;
+    const designation = formData.get("designation") as string;
+    const department = formData.get("department") as string;
+    const joiningDate = formData.get("joiningDate") as string;
+    const role = formData.get("role") as string;
+    const location = formData.get("location") as string;
+
+    if (!firstName || !lastName || !email) {
+        return { error: "First name, last name, and email are required" };
+    }
+
+    try {
+        const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+                first_name: firstName,
+                last_name: lastName,
+                email: email,
+                phone: phone || null,
+                designation: designation || null,
+                department: department || null,
+                joining_date: joiningDate || null,
+                role: role as 'admin' | 'hr' | 'employee',
+                location: location || null,
+            })
+            .eq('id', employeeId);
+
+        if (updateError) {
+            console.error("Profile update error:", updateError);
+            return { error: "Failed to update employee: " + updateError.message };
+        }
+
+        revalidatePath('/dashboard/employees');
+        revalidatePath(`/dashboard/employees/${employeeId}`);
+
+        return {
+            success: true,
+            message: "Employee information updated successfully",
+        };
+
+    } catch (error) {
+        console.error("Update employee error:", error);
+        return { error: "An unexpected error occurred" };
+    }
+}
+
+// ... existing helper functions (generateTempPassword, getCurrentProfile, checkIn, checkOut, signOut) unchanged below here ...
+// but since I'm overwriting, I need to include them.
 
 /**
  * Generate a temporary password

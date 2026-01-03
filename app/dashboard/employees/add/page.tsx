@@ -2,281 +2,296 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useUser } from "@/lib/context/user-context";
+import { createEmployee } from "@/lib/actions/auth";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Save, User, Briefcase, Phone, MapPin } from "lucide-react";
-import { departments, designations } from "@/lib/data/employees";
+import {
+    ChevronLeft,
+    Loader2,
+    Copy,
+    Check,
+    AlertCircle,
+    UserPlus
+} from "lucide-react";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+
+// Departments list - in a real app this might come from DB
+const DEPARTMENTS = [
+    "Management",
+    "Engineering",
+    "Product",
+    "Design",
+    "HR",
+    "Finance",
+    "Sales",
+    "Marketing",
+    "Support",
+];
 
 export default function AddEmployeePage() {
+    const { canManageEmployees, isLoading: userLoading } = useUser();
     const router = useRouter();
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [formData, setFormData] = useState({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        department: "",
-        designation: "",
-        joiningDate: "",
-        salary: "",
-        address: "",
-        emergencyContact: "",
-        manager: "",
-    });
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [successData, setSuccessData] = useState<{
+        employeeId: string;
+        tempPassword: string;
+    } | null>(null);
+    const [copied, setCopied] = useState(false);
+    const [department, setDepartment] = useState("");
+    const [role, setRole] = useState("employee");
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // In production, save to Supabase here
-        console.log("Employee data:", formData);
-
-        // Redirect to employees list
+    // Redirect if not authorized
+    if (!userLoading && !canManageEmployees) {
         router.push("/dashboard/employees");
+        return null;
+    }
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null);
+        setSuccessData(null);
+
+        try {
+            const formData = new FormData(e.currentTarget);
+            const result = await createEmployee(formData);
+
+            if (result.error) {
+                setError(result.error);
+            } else if (result.success && result.employeeId && result.tempPassword) {
+                setSuccessData({
+                    employeeId: result.employeeId,
+                    tempPassword: result.tempPassword,
+                });
+            }
+        } catch (err) {
+            setError("Something went wrong. Please try again.");
+            console.error(err);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    return (
-        <div className="flex flex-col gap-6 max-w-4xl">
-            {/* Page Header */}
-            <div className="flex items-center gap-4">
-                <Link href="/dashboard/employees">
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="border-slate-700 text-slate-300 hover:bg-slate-700"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                </Link>
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-white">Add New Employee</h1>
-                    <p className="text-slate-400">Fill in the details to add a new team member</p>
+    const copyCredentials = () => {
+        if (!successData) return;
+        const text = `Dayflow HRMS Login Credentials\nLogin ID: ${successData.employeeId}\nPassword: ${successData.tempPassword}`;
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    if (userLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+            </div>
+        );
+    }
+
+    // Success State - Show Credentials
+    if (successData) {
+        return (
+            <div className="max-w-2xl mx-auto">
+                <div className="bg-white rounded-xl border border-emerald-100 shadow-lg overflow-hidden">
+                    <div className="bg-emerald-500 px-6 py-4 flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
+                            <Check className="h-5 w-5 text-white" />
+                        </div>
+                        <h1 className="text-xl font-bold text-white">Employee Created Successfully!</h1>
+                    </div>
+
+                    <div className="p-8 space-y-6">
+                        <p className="text-slate-600">
+                            The employee account has been created. Please share these credentials with the employee securely.
+                            They will be asked to change their password upon first login.
+                        </p>
+
+                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Login ID</p>
+                                    <p className="text-sm font-mono font-medium text-slate-800 mt-1">{successData.employeeId}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Temporary Password</p>
+                                    <p className="text-sm font-mono font-medium text-slate-800 mt-1">{successData.tempPassword}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <Button
+                                onClick={copyCredentials}
+                                variant="outline"
+                                className="flex-1 border-slate-200 hover:bg-slate-50"
+                            >
+                                {copied ? (
+                                    <>
+                                        <Check className="h-4 w-4 mr-2 text-emerald-500" />
+                                        Copied to Clipboard
+                                    </>
+                                ) : (
+                                    <>
+                                        <Copy className="h-4 w-4 mr-2" />
+                                        Copy Credentials
+                                    </>
+                                )}
+                            </Button>
+                            <Link href="/dashboard/employees" className="flex-1">
+                                <Button className="w-full bg-indigo-600 hover:bg-indigo-700">
+                                    Return to List
+                                </Button>
+                            </Link>
+                        </div>
+
+                        <div className="text-center">
+                            <button
+                                onClick={() => setSuccessData(null)}
+                                className="text-sm text-slate-500 hover:text-indigo-600 underline underline-offset-4"
+                            >
+                                Add another employee
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
+        );
+    }
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Personal Information */}
-                <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
-                    <CardHeader>
-                        <CardTitle className="text-white flex items-center gap-2">
-                            <User className="h-5 w-5 text-indigo-400" />
-                            Personal Information
-                        </CardTitle>
-                        <CardDescription className="text-slate-400">
-                            Basic details about the employee
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-6 sm:grid-cols-2">
-                        <div className="space-y-2">
-                            <Label htmlFor="firstName" className="text-slate-300">First Name *</Label>
-                            <Input
-                                id="firstName"
-                                name="firstName"
-                                value={formData.firstName}
-                                onChange={handleChange}
-                                required
-                                placeholder="John"
-                                className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="lastName" className="text-slate-300">Last Name *</Label>
-                            <Input
-                                id="lastName"
-                                name="lastName"
-                                value={formData.lastName}
-                                onChange={handleChange}
-                                required
-                                placeholder="Doe"
-                                className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="email" className="text-slate-300">Email Address *</Label>
-                            <Input
-                                id="email"
-                                name="email"
-                                type="email"
-                                value={formData.email}
-                                onChange={handleChange}
-                                required
-                                placeholder="john.doe@company.com"
-                                className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="phone" className="text-slate-300">Phone Number *</Label>
-                            <Input
-                                id="phone"
-                                name="phone"
-                                value={formData.phone}
-                                onChange={handleChange}
-                                required
-                                placeholder="+91 98765 43210"
-                                className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500"
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
+    return (
+        <div className="max-w-3xl mx-auto">
+            <div className="mb-6 flex items-center gap-2 text-slate-500 text-sm">
+                <Link href="/dashboard/employees" className="hover:text-indigo-600 flex items-center gap-1">
+                    <ChevronLeft className="h-4 w-4" />
+                    Back to Employees
+                </Link>
+                <span>/</span>
+                <span className="text-slate-800 font-medium">Add New Employee</span>
+            </div>
 
-                {/* Employment Details */}
-                <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
-                    <CardHeader>
-                        <CardTitle className="text-white flex items-center gap-2">
-                            <Briefcase className="h-5 w-5 text-indigo-400" />
-                            Employment Details
-                        </CardTitle>
-                        <CardDescription className="text-slate-400">
-                            Job-related information
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-6 sm:grid-cols-2">
-                        <div className="space-y-2">
-                            <Label htmlFor="department" className="text-slate-300">Department *</Label>
-                            <select
-                                id="department"
-                                name="department"
-                                value={formData.department}
-                                onChange={handleChange}
-                                required
-                                className="w-full h-10 px-3 rounded-md bg-slate-900/50 border border-slate-700 text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                            >
-                                <option value="">Select department</option>
-                                {departments.map((dept) => (
-                                    <option key={dept} value={dept}>{dept}</option>
-                                ))}
-                            </select>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
+                    <div className="h-10 w-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                        <UserPlus className="h-5 w-5 text-indigo-600" />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-bold text-slate-800">New Employee Details</h1>
+                        <p className="text-slate-500 text-sm">Fill in the information to create a new employee account</p>
+                    </div>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-8">
+                    {error && (
+                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 text-red-700">
+                            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                            <p className="text-sm">{error}</p>
                         </div>
+                    )}
+
+                    <div className="grid gap-6 sm:grid-cols-2">
                         <div className="space-y-2">
-                            <Label htmlFor="designation" className="text-slate-300">Designation *</Label>
-                            <select
-                                id="designation"
-                                name="designation"
-                                value={formData.designation}
-                                onChange={handleChange}
-                                required
-                                className="w-full h-10 px-3 rounded-md bg-slate-900/50 border border-slate-700 text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                            >
-                                <option value="">Select designation</option>
-                                {designations.map((desig) => (
-                                    <option key={desig} value={desig}>{desig}</option>
-                                ))}
-                            </select>
+                            <Label htmlFor="firstName">First Name <span className="text-red-500">*</span></Label>
+                            <Input id="firstName" name="firstName" placeholder="e.g. John" required />
                         </div>
+
                         <div className="space-y-2">
-                            <Label htmlFor="joiningDate" className="text-slate-300">Joining Date *</Label>
+                            <Label htmlFor="lastName">Last Name <span className="text-red-500">*</span></Label>
+                            <Input id="lastName" name="lastName" placeholder="e.g. Doe" required />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email Address <span className="text-red-500">*</span></Label>
+                            <Input id="email" name="email" type="email" placeholder="john.doe@example.com" required />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="phone">Phone Number</Label>
+                            <Input id="phone" name="phone" type="tel" placeholder="+1 (555) 000-0000" />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="designation">Job Title / Designation</Label>
+                            <Input id="designation" name="designation" placeholder="e.g. Senior Developer" />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="department">Department</Label>
+                            <div className="relative">
+                                <select
+                                    id="department"
+                                    name="department"
+                                    value={department}
+                                    onChange={(e) => setDepartment(e.target.value)}
+                                    className="flex h-11 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <option value="">Select Department</option>
+                                    {DEPARTMENTS.map(dept => (
+                                        <option key={dept} value={dept}>{dept}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="role">System Role <span className="text-red-500">*</span></Label>
+                            <div className="relative">
+                                <select
+                                    id="role"
+                                    name="role"
+                                    value={role}
+                                    onChange={(e) => setRole(e.target.value)}
+                                    required
+                                    className="flex h-11 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <option value="">Select Role</option>
+                                    <option value="employee">Employee (Standard Access)</option>
+                                    <option value="admin">Administrator (Full Access)</option>
+                                </select>
+                            </div>
+                            <p className="text-xs text-slate-500">
+                                Admins have full access to manage employees and settings.
+                            </p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="joiningDate">Joining Date <span className="text-red-500">*</span></Label>
                             <Input
                                 id="joiningDate"
                                 name="joiningDate"
                                 type="date"
-                                value={formData.joiningDate}
-                                onChange={handleChange}
+                                defaultValue={new Date().toISOString().split('T')[0]}
                                 required
-                                className="bg-slate-900/50 border-slate-700 text-white focus:border-indigo-500 [color-scheme:dark]"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="salary" className="text-slate-300">Salary (Monthly)</Label>
-                            <Input
-                                id="salary"
-                                name="salary"
-                                type="number"
-                                value={formData.salary}
-                                onChange={handleChange}
-                                placeholder="50000"
-                                className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="manager" className="text-slate-300">Reporting Manager</Label>
-                            <Input
-                                id="manager"
-                                name="manager"
-                                value={formData.manager}
-                                onChange={handleChange}
-                                placeholder="Manager's name"
-                                className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500"
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
+                    </div>
 
-                {/* Contact Information */}
-                <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
-                    <CardHeader>
-                        <CardTitle className="text-white flex items-center gap-2">
-                            <MapPin className="h-5 w-5 text-indigo-400" />
-                            Additional Information
-                        </CardTitle>
-                        <CardDescription className="text-slate-400">
-                            Address and emergency contact
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-6 sm:grid-cols-2">
-                        <div className="space-y-2 sm:col-span-2">
-                            <Label htmlFor="address" className="text-slate-300">Address</Label>
-                            <textarea
-                                id="address"
-                                name="address"
-                                value={formData.address}
-                                onChange={handleChange}
-                                rows={3}
-                                placeholder="Enter full address"
-                                className="w-full px-3 py-2 rounded-md bg-slate-900/50 border border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
-                            />
-                        </div>
-                        <div className="space-y-2 sm:col-span-2">
-                            <Label htmlFor="emergencyContact" className="text-slate-300">Emergency Contact</Label>
-                            <Input
-                                id="emergencyContact"
-                                name="emergencyContact"
-                                value={formData.emergencyContact}
-                                onChange={handleChange}
-                                placeholder="Name and phone number"
-                                className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500"
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Form Actions */}
-                <div className="flex items-center justify-end gap-4">
-                    <Link href="/dashboard/employees">
+                    <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                        <Link href="/dashboard/employees">
+                            <Button type="button" variant="outline" className="border-slate-200">
+                                Cancel
+                            </Button>
+                        </Link>
                         <Button
-                            type="button"
-                            variant="outline"
-                            className="border-slate-700 text-slate-300 hover:bg-slate-700"
+                            type="submit"
+                            disabled={isLoading}
+                            className="bg-indigo-600 hover:bg-indigo-700 min-w-[140px]"
                         >
-                            Cancel
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Creating...
+                                </>
+                            ) : (
+                                "Create Employee"
+                            )}
                         </Button>
-                    </Link>
-                    <Button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="bg-indigo-500 hover:bg-indigo-600 text-white gap-2"
-                    >
-                        <Save className="h-4 w-4" />
-                        {isSubmitting ? "Saving..." : "Save Employee"}
-                    </Button>
-                </div>
-            </form>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 }

@@ -12,13 +12,12 @@ import {
     X,
     User,
     ChevronDown,
-    Settings,
     Loader2
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { UserProvider, useUser } from "@/lib/context/user-context";
-import { checkIn, checkOut } from "@/lib/actions/auth";
+import { checkIn, checkOut, getTodayAttendance } from "@/lib/actions/attendance";
 
 const navigation = [
     { name: "Employees", href: "/dashboard/employees", icon: Users },
@@ -43,12 +42,24 @@ function DashboardNavigation({ children }: { children: React.ReactNode }) {
         }
     }, [user, isLoading, router]);
 
-    // Sync check-in status with user profile
+    // Sync check-in status with user profile and fetch real attendance
     useEffect(() => {
-        if (user?.attendance_status) {
-            setIsCheckedIn(user.attendance_status === 'present');
+        const fetchAttendanceStatus = async () => {
+            const result = await getTodayAttendance();
+            if (result.success && result.attendance?.check_in_time) {
+                setIsCheckedIn(!result.attendance.check_out_time);
+            } else {
+                setIsCheckedIn(false);
+            }
+        };
+
+        if (user && !isAdmin) {
+            fetchAttendanceStatus();
+            // Refresh every 30 seconds
+            const interval = setInterval(fetchAttendanceStatus, 30000);
+            return () => clearInterval(interval);
         }
-    }, [user?.attendance_status]);
+    }, [user, isAdmin]);
 
     const handleLogout = async () => {
         setProfileMenuOpen(false);
@@ -227,16 +238,6 @@ function DashboardNavigation({ children }: { children: React.ReactNode }) {
                                             <User className="h-4 w-4" />
                                             My Profile
                                         </Link>
-                                        {isAdmin && (
-                                            <Link
-                                                href="/dashboard/settings"
-                                                className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
-                                                onClick={() => setProfileMenuOpen(false)}
-                                            >
-                                                <Settings className="h-4 w-4" />
-                                                Settings
-                                            </Link>
-                                        )}
                                         <div className="border-t border-slate-100 mt-1 pt-1">
                                             <button
                                                 onClick={handleLogout}
@@ -343,16 +344,6 @@ function DashboardNavigation({ children }: { children: React.ReactNode }) {
                 </div>
             </main>
 
-            {/* Settings Link - Only for Admin */}
-            {isAdmin && (
-                <Link
-                    href="/dashboard/settings"
-                    className="fixed bottom-6 left-6 flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg shadow-sm text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
-                >
-                    <Settings className="h-4 w-4" />
-                    Settings
-                </Link>
-            )}
         </div>
     );
 }

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff, LayoutDashboard, Loader2 } from "lucide-react";
 
 export function LoginForm({
@@ -20,6 +20,12 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  // Clear form on mount to prevent autofill from showing previous session
+  useEffect(() => {
+    setLoginId("");
+    setPassword("");
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,7 +137,7 @@ export function LoginForm({
               onChange={(e) => setLoginId(e.target.value)}
               className="h-11 bg-white border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
               disabled={isLoading}
-              autoComplete="username"
+              autoComplete="off"
               autoCapitalize="none"
               autoFocus
             />
@@ -166,16 +172,6 @@ export function LoginForm({
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-          </div>
-
-          {/* Forgot Password Link */}
-          <div className="text-right">
-            <Link
-              href="/auth/forgot-password"
-              className="text-sm text-indigo-600 hover:text-indigo-700"
-            >
-              Forgot password?
-            </Link>
           </div>
 
           {/* Error Message */}

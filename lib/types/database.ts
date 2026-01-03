@@ -70,22 +70,52 @@ export interface Profile {
     is_first_login: boolean;
 }
 
-// Salary Info table type
+// Salary Info table type (extended with all components)
 export interface SalaryInfo {
     id: string;
     profile_id: string;
+
+    // Basic Wage Info
     monthly_wage: number;
     yearly_wage: number;
     working_days_per_week: number;
     break_time_hours: number;
+
+    // Salary Components
+    basic_salary: number;
+    basic_salary_percentage: number;
+
+    hra: number;  // House Rent Allowance
+    hra_percentage: number;
+
+    standard_allowance: number;
+    standard_allowance_percentage: number;
+
+    performance_bonus: number;
+    performance_bonus_percentage: number;
+
+    lta: number;  // Leave Travel Allowance
+    lta_percentage: number;
+
+    fixed_allowance: number;
+    fixed_allowance_percentage: number;
+
+    // Provident Fund (PF) Contribution
     pf_employer: number;
+    pf_employer_percentage: number;
+
     pf_employee: number;
+    pf_employee_percentage: number;
+
+    // Tax Deductions
     professional_tax: number;
+
+    // Timestamps
     created_at: string;
     updated_at: string;
 }
 
-// Salary Component table type
+// Salary Component table type (for custom components if needed)
 export interface SalaryComponent {
     id: string;
     salary_info_id: string;
