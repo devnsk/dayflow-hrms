@@ -1,109 +1,231 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+<div align="center">
 
-<p align="center">
- The fastest way to build apps with Next.js and Supabase
-</p>
+# 🌟 Dayflow HRMS
 
-<p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
-</p>
-<br/>
+### Modern Human Resource Management System
 
-## Features
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org)
+[![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org)
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Proxy
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+*A comprehensive, beautiful, and feature-rich HRMS solution built with the latest technologies*
 
-## Demo
+[🚀 Live Demo](#demo) • [✨ Features](#-features) • [🏁 Quick Start](#-quick-start) • [📖 Documentation](#-documentation)
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+---
 
-## Deploy to Vercel
+</div>
 
-Vercel deployment will guide you through creating a Supabase account and project.
+## 📸 Screenshots
 
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
+<div align="center">
+  <img src="https://via.placeholder.com/800x400/4F46E5/FFFFFF?text=Dashboard+Preview" alt="Dashboard" width="100%" />
+</div>
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
+---
 
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
+## ✨ Features
 
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
+### 👥 **Employee Management**
+- 📋 Complete employee directory with search & filters
+- 👤 Detailed employee profiles with resume, private info & salary tabs
+- ➕ Add new employees with auto-generated credentials
+- ✏️ Edit employee information (Admin/HR only)
+- 🔐 Role-based access control (Admin, HR, Employee)
 
-## Clone and run locally
+### 📅 **Leave Management**
+- 📝 Apply for leaves with type selection
+- ✅ Approve/Reject leave requests (Admin/HR)
+- 📊 Leave balance tracking per employee
+- 📋 Leave allocation management
+- 📎 Document attachment support
 
-1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
+### ⏰ **Attendance Tracking**
+- 📆 Daily attendance overview
+- 🎯 Status indicators (Present, Absent, On Leave)
+- 📊 Attendance history & reports
+- 🔍 Filter by date and department
 
-2. Create a Next.js app using the Supabase Starter template npx command
+### 💰 **Salary Information** (Admin Only)
+- 💵 Monthly & yearly wage management
+- 📊 Salary breakdown with components
+- 📈 PF, HRA, LTA, and allowance tracking
+- ✏️ Inline editing capabilities
 
-   ```bash
-   npx create-next-app --example with-supabase with-supabase-app
-   ```
+### 🔒 **Authentication & Security**
+- 🔐 Secure login with Supabase Auth
+- 🍪 Cookie-based session management
+- 🛡️ Row Level Security (RLS) policies
+- 👮 Role-based permissions
 
-   ```bash
-   yarn create next-app --example with-supabase with-supabase-app
-   ```
+---
 
-   ```bash
-   pnpm create next-app --example with-supabase with-supabase-app
-   ```
+## 🛠️ Tech Stack
 
-3. Use `cd` to change into the app's directory
+| Technology | Purpose |
+|------------|---------|
+| **Next.js 15** | React Framework with App Router |
+| **Supabase** | Backend, Auth & Database |
+| **TypeScript** | Type-safe development |
+| **Tailwind CSS** | Utility-first styling |
+| **shadcn/ui** | Beautiful UI components |
+| **Lucide Icons** | Modern icon library |
+| **Resend** | Email notifications |
 
-   ```bash
-   cd with-supabase-app
-   ```
+---
 
-4. Rename `.env.example` to `.env.local` and update the following:
+## 🏁 Quick Start
 
-  ```env
-  NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=[INSERT SUPABASE PROJECT API PUBLISHABLE OR ANON KEY]
-  ```
-  > [!NOTE]
-  > This example uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, which refers to Supabase's new **publishable** key format.
-  > Both legacy **anon** keys and new **publishable** keys can be used with this variable name during the transition period. Supabase's dashboard may show `NEXT_PUBLIC_SUPABASE_ANON_KEY`; its value can be used in this example.
-  > See the [full announcement](https://github.com/orgs/supabase/discussions/29260) for more information.
+### Prerequisites
 
-  Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
+- Node.js 18+ 
+- npm/yarn/pnpm
+- Supabase account
 
-5. You can now run the Next.js local development server:
+### 1️⃣ Clone the Repository
 
-   ```bash
-   npm run dev
-   ```
+```bash
+git clone https://github.com/yourusername/dayflow-hrms.git
+cd dayflow-hrms
+```
 
-   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
+### 2️⃣ Install Dependencies
 
-6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
 
-> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
+### 3️⃣ Set Up Environment Variables
 
-## Feedback and issues
+Create a `.env.local` file in the root directory:
 
-Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
+```env
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
-## More Supabase examples
+# Email Service (Optional)
+RESEND_API_KEY=your_resend_api_key
+```
 
-- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
-- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
-- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
+> 💡 Get your Supabase credentials from [supabase.com/dashboard](https://supabase.com/dashboard)
+
+### 4️⃣ Set Up Database
+
+Run the SQL migrations in your Supabase SQL editor:
+
+1. `LEAVE_MANAGEMENT_MIGRATION.sql` - Leave management tables
+2. `SALARY_INFO_MIGRATION.sql` - Salary information table
+3. `FIX_LEAVE_RLS_POLICIES.sql` - RLS policies for leaves
+4. `CREATE_LEAVE_ALLOCATIONS.sql` - Leave allocation setup
+
+### 5️⃣ Run Development Server
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser 🎉
+
+---
+
+## 🚀 Deploy to Vercel
+
+### One-Click Deploy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/dayflow-hrms)
+
+### Manual Deployment
+
+1. Push your code to GitHub
+2. Connect your repo to Vercel
+3. Add environment variables:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `RESEND_API_KEY` (optional)
+4. Deploy!
+
+### Post-Deployment
+
+Update your Supabase project settings:
+- **Site URL**: `https://your-app.vercel.app`
+- **Redirect URLs**: `https://your-app.vercel.app/**`
+
+---
+
+## 📁 Project Structure
+
+```
+dayflow-hrms/
+├── 📂 app/
+│   ├── 📂 dashboard/
+│   │   ├── 📂 admin/          # Admin panel
+│   │   ├── 📂 attendance/     # Attendance tracking
+│   │   ├── 📂 employees/      # Employee management
+│   │   ├── 📂 leaves/         # Leave management
+│   │   └── 📂 profile/        # User profile
+│   ├── 📂 auth/               # Authentication routes
+│   └── 📄 layout.tsx          # Root layout
+├── 📂 components/
+│   └── 📂 ui/                 # shadcn/ui components
+├── 📂 lib/
+│   ├── 📂 actions/            # Server actions
+│   ├── 📂 context/            # React contexts
+│   ├── 📂 supabase/           # Supabase client
+│   └── 📂 types/              # TypeScript types
+└── 📂 sql_scripts/            # Database migrations
+```
+
+---
+
+## 👤 User Roles
+
+| Role | Permissions |
+|------|------------|
+| **Admin** | Full access to all features, user management, salary info |
+| **HR** | Employee management, leave approvals, attendance |
+| **Employee** | View own profile, apply for leaves, view attendance |
+
+---
+
+## 📖 Documentation
+
+For detailed documentation on each module:
+
+- 📋 [Leave Management Setup](./LEAVE_APPROVAL_SETUP.md)
+- 💰 [Salary Migration Guide](./SALARY_INFO_MIGRATION.sql)
+- 👤 [Employee Profile Tabs](./EMPLOYEE_PROFILE_TABS.md)
+- 🚀 [Quick Start Guide](./QUICK_START.md)
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+
+### Built with ❤️ by Your Team
+
+**[⬆ Back to Top](#-dayflow-hrms)**
+
+</div>
