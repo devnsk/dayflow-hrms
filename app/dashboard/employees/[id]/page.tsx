@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -473,8 +475,8 @@ export default function EmployeeProfilePage() {
                         <button
                             onClick={() => setActiveTab("resume")}
                             className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "resume"
-                                    ? "border-indigo-600 text-indigo-600"
-                                    : "border-transparent text-slate-600 hover:text-slate-900"
+                                ? "border-indigo-600 text-indigo-600"
+                                : "border-transparent text-slate-600 hover:text-slate-900"
                                 }`}
                         >
                             <div className="flex items-center gap-2">
@@ -485,8 +487,8 @@ export default function EmployeeProfilePage() {
                         <button
                             onClick={() => setActiveTab("private")}
                             className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "private"
-                                    ? "border-indigo-600 text-indigo-600"
-                                    : "border-transparent text-slate-600 hover:text-slate-900"
+                                ? "border-indigo-600 text-indigo-600"
+                                : "border-transparent text-slate-600 hover:text-slate-900"
                                 }`}
                         >
                             <div className="flex items-center gap-2">
@@ -498,8 +500,8 @@ export default function EmployeeProfilePage() {
                             <button
                                 onClick={() => setActiveTab("salary")}
                                 className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "salary"
-                                        ? "border-indigo-600 text-indigo-600"
-                                        : "border-transparent text-slate-600 hover:text-slate-900"
+                                    ? "border-indigo-600 text-indigo-600"
+                                    : "border-transparent text-slate-600 hover:text-slate-900"
                                     }`}
                             >
                                 <div className="flex items-center gap-2">

@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
@@ -46,13 +48,13 @@ export default function EditEmployeePage() {
     const params = useParams();
     const router = useRouter();
     const { user, isLoading: userLoading, canManageEmployees } = useUser();
-    
+
     const [employee, setEmployee] = useState<EmployeeData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
-    
+
     const [formData, setFormData] = useState({
         firstName: "",
         lastName: "",

@@ -37,22 +37,22 @@ const ITEMS_PER_PAGE = 9;
 function StatusIndicator({ status }: { status: AttendanceStatus }) {
     if (status === "present") {
         return (
-            <div className="absolute top-3 right-3">
-                <div className="h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-emerald-100" title="Present in office" />
+            <div className="absolute top-3 right-3" title="Present in office">
+                <div className="h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-emerald-100" />
             </div>
         );
     }
     if (status === "on_leave") {
         return (
-            <div className="absolute top-3 right-3">
-                <Plane className="h-4 w-4 text-blue-500" title="On leave" />
+            <div className="absolute top-3 right-3" title="On leave">
+                <Plane className="h-4 w-4 text-blue-500" />
             </div>
         );
     }
     // absent
     return (
-        <div className="absolute top-3 right-3">
-            <div className="h-3 w-3 rounded-full bg-amber-500 ring-2 ring-amber-100" title="Absent" />
+        <div className="absolute top-3 right-3" title="Absent">
+            <div className="h-3 w-3 rounded-full bg-amber-500 ring-2 ring-amber-100" />
         </div>
     );
 }
