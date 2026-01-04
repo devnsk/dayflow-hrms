@@ -307,23 +307,66 @@ export async function approveLeaveRequest(requestId: string) {
 
         // Update leave allocation (increment used_days) - skip for unpaid leave
         if (request.leave_type !== 'unpaid_leave') {
+            const currentYear = new Date().getFullYear();
+
+            console.log("Updating leave allocation for:", {
+                profile_id: request.profile_id,
+                leave_type: request.leave_type,
+                days_count: request.days_count,
+                year: currentYear
+            });
+
             const { data: currentAlloc, error: allocFetchError } = await supabase
                 .from('leave_allocation')
-                .select('used_days')
+                .select('id, used_days, total_days')
                 .eq('profile_id', request.profile_id)
                 .eq('leave_type', request.leave_type)
+                .eq('year', currentYear)
                 .single();
 
-            if (!allocFetchError && currentAlloc) {
+            console.log("Current allocation:", currentAlloc, "Fetch error:", allocFetchError);
+
+            if (allocFetchError) {
+                console.error("Error fetching leave allocation:", allocFetchError);
+                // If no allocation found, try to create one
+                if (allocFetchError.code === 'PGRST116') {
+                    console.log("No allocation found, creating one...");
+                    const defaultDays = request.leave_type === 'paid_leave' ? 20 :
+                        request.leave_type === 'sick_leave' ? 12 :
+                            request.leave_type === 'casual_leave' ? 10 : 0;
+
+                    const { error: insertError } = await supabase
+                        .from('leave_allocation')
+                        .insert({
+                            profile_id: request.profile_id,
+                            leave_type: request.leave_type,
+                            total_days: defaultDays,
+                            used_days: request.days_count,
+                            year: currentYear
+                        });
+
+                    if (insertError) {
+                        console.error("Error creating leave allocation:", insertError);
+                    } else {
+                        console.log("Created new allocation with used_days:", request.days_count);
+                    }
+                }
+            } else if (currentAlloc) {
+                const newUsedDays = currentAlloc.used_days + request.days_count;
+                console.log("Updating used_days from", currentAlloc.used_days, "to", newUsedDays);
+
                 const { error: allocUpdateError } = await supabase
                     .from('leave_allocation')
-                    .update({ used_days: currentAlloc.used_days + request.days_count })
-                    .eq('profile_id', request.profile_id)
-                    .eq('leave_type', request.leave_type);
+                    .update({
+                        used_days: newUsedDays,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', currentAlloc.id);
 
                 if (allocUpdateError) {
                     console.error("Error updating leave allocation:", allocUpdateError);
-                    // Don't fail the entire operation if allocation update fails
+                } else {
+                    console.log("Successfully updated leave allocation");
                 }
             }
         }
