@@ -106,10 +106,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
     };
 
     const logout = async () => {
-        await supabase.auth.signOut();
-        setUser(null);
-        router.refresh();
-        router.replace("/auth/login");
+        try {
+            await supabase.auth.signOut();
+            setUser(null);
+            // Use window.location for a hard redirect to ensure clean state
+            window.location.href = "/auth/login";
+        } catch (error) {
+            console.error("Error logging out:", error);
+            // Force redirect even if signOut fails
+            window.location.href = "/auth/login";
+        }
     };
 
     useEffect(() => {
