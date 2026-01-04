@@ -12,7 +12,8 @@ import {
     X,
     User,
     ChevronDown,
-    Loader2
+    Loader2,
+    Plane
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ function DashboardNavigation({ children }: { children: React.ReactNode }) {
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
     const [isCheckedIn, setIsCheckedIn] = useState(false);
     const [checkInLoading, setCheckInLoading] = useState(false);
+    const [isOnLeave, setIsOnLeave] = useState(false);
 
     // Redirect to login if not authenticated
     useEffect(() => {
@@ -46,10 +48,18 @@ function DashboardNavigation({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const fetchAttendanceStatus = async () => {
             const result = await getTodayAttendance();
-            if (result.success && result.attendance?.check_in_time) {
-                setIsCheckedIn(!result.attendance.check_out_time);
-            } else {
+
+            // Check if employee is on leave today
+            if (result.onLeave) {
+                setIsOnLeave(true);
                 setIsCheckedIn(false);
+            } else {
+                setIsOnLeave(false);
+                if (result.success && result.attendance?.check_in_time) {
+                    setIsCheckedIn(!result.attendance.check_out_time);
+                } else {
+                    setIsCheckedIn(false);
+                }
             }
         };
 
@@ -163,7 +173,12 @@ function DashboardNavigation({ children }: { children: React.ReactNode }) {
 
                         {/* Check In / Check Out Button */}
                         <div className="hidden sm:flex items-center gap-2">
-                            {checkInLoading ? (
+                            {isOnLeave ? (
+                                <div className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg cursor-not-allowed">
+                                    <Plane className="h-4 w-4" />
+                                    On Leave
+                                </div>
+                            ) : checkInLoading ? (
                                 <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
                             ) : !isCheckedIn ? (
                                 <button
@@ -185,8 +200,8 @@ function DashboardNavigation({ children }: { children: React.ReactNode }) {
                         {/* Status Indicator */}
                         <div className={cn(
                             "h-3 w-3 rounded-full transition-colors",
-                            isCheckedIn ? "bg-emerald-500" : "bg-red-500"
-                        )} title={isCheckedIn ? "Checked In" : "Not Checked In"} />
+                            isOnLeave ? "bg-blue-500" : isCheckedIn ? "bg-emerald-500" : "bg-red-500"
+                        )} title={isOnLeave ? "On Leave" : isCheckedIn ? "Checked In" : "Not Checked In"} />
 
                         {/* Profile Dropdown */}
                         <div className="relative">
@@ -308,7 +323,12 @@ function DashboardNavigation({ children }: { children: React.ReactNode }) {
 
                             {/* Mobile Check In/Out */}
                             <div className="mt-2 pt-2 border-t border-slate-200">
-                                {!isCheckedIn ? (
+                                {isOnLeave ? (
+                                    <div className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium">
+                                        <Plane className="h-4 w-4" />
+                                        On Leave Today
+                                    </div>
+                                ) : !isCheckedIn ? (
                                     <button
                                         onClick={() => {
                                             handleCheckIn();

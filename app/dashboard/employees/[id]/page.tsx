@@ -197,6 +197,8 @@ export default function EmployeeProfilePage() {
         const fetchEmployee = async () => {
             if (!user || !id) return;
 
+            const today = new Date().toISOString().split('T')[0];
+
             const { data, error } = await supabase
                 .from("profiles")
                 .select("*")
@@ -210,7 +212,25 @@ export default function EmployeeProfilePage() {
                 return;
             }
 
-            setEmployee(data);
+            // Check if this employee is on approved leave today
+            const { data: leaveToday } = await supabase
+                .from("leave_request")
+                .select("id")
+                .eq("profile_id", id)
+                .eq("status", "approved")
+                .lte("start_date", today)
+                .gte("end_date", today)
+                .limit(1);
+
+            // Update attendance status based on leave
+            const employeeWithLeaveStatus = {
+                ...data,
+                attendance_status: (leaveToday && leaveToday.length > 0)
+                    ? "on_leave" as AttendanceStatus
+                    : (data.attendance_status as AttendanceStatus || "absent")
+            };
+
+            setEmployee(employeeWithLeaveStatus);
 
             // Fetch manager name if exists
             if (data.manager_id) {

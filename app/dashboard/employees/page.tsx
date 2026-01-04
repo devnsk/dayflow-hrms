@@ -72,6 +72,9 @@ export default function EmployeesPage() {
             if (!user?.company_id) return;
 
             const supabase = createClient();
+            const today = new Date().toISOString().split('T')[0];
+
+            // Fetch employees
             const { data, error } = await supabase
                 .from("profiles")
                 .select("id, employee_id, first_name, last_name, email, designation, department, avatar_url, attendance_status, status")
@@ -84,7 +87,26 @@ export default function EmployeesPage() {
                 return;
             }
 
-            setEmployees(data || []);
+            // Fetch today's approved leaves for all employees in this company
+            const { data: todayLeaves } = await supabase
+                .from("leave_request")
+                .select("profile_id")
+                .eq("status", "approved")
+                .lte("start_date", today)
+                .gte("end_date", today);
+
+            // Create a set of profile IDs that are on leave today
+            const onLeaveProfileIds = new Set(todayLeaves?.map(leave => leave.profile_id) || []);
+
+            // Update employee attendance status based on leave data
+            const employeesWithLeaveStatus = (data || []).map(emp => ({
+                ...emp,
+                attendance_status: onLeaveProfileIds.has(emp.id)
+                    ? "on_leave" as AttendanceStatus
+                    : (emp.attendance_status as AttendanceStatus || "absent")
+            }));
+
+            setEmployees(employeesWithLeaveStatus);
 
             // Extract unique departments
             const uniqueDepts = [...new Set(data?.map(e => e.department).filter(Boolean))] as string[];

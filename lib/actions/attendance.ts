@@ -19,6 +19,24 @@ export async function checkIn() {
         const today = new Date().toISOString().split('T')[0];
         const checkInTime = new Date().toISOString();
 
+        // Check if employee is on approved leave today
+        const { data: leaveToday } = await supabase
+            .from("leave_request")
+            .select("id, leave_type")
+            .eq("profile_id", user.id)
+            .eq("status", "approved")
+            .lte("start_date", today)
+            .gte("end_date", today)
+            .limit(1);
+
+        if (leaveToday && leaveToday.length > 0) {
+            return {
+                error: "You are on approved leave today. Check-in is not available.",
+                success: false,
+                onLeave: true
+            };
+        }
+
         // Check if attendance record for today exists
         const { data: existingAttendance, error: selectError } = await supabase
             .from("attendance")
@@ -126,11 +144,24 @@ export async function getTodayAttendance() {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return { error: "Not authenticated", attendance: null };
+        return { error: "Not authenticated", attendance: null, onLeave: false };
     }
 
     try {
         const today = new Date().toISOString().split('T')[0];
+
+        // Check if on approved leave today
+        const { data: leaveToday } = await supabase
+            .from("leave_request")
+            .select("id, leave_type, start_date, end_date")
+            .eq("profile_id", user.id)
+            .eq("status", "approved")
+            .lte("start_date", today)
+            .gte("end_date", today)
+            .limit(1);
+
+        const isOnLeave = leaveToday && leaveToday.length > 0;
+        const leaveInfo = isOnLeave ? leaveToday[0] : null;
 
         const { data: attendance, error } = await supabase
             .from("attendance")
@@ -141,13 +172,13 @@ export async function getTodayAttendance() {
 
         if (error && error.code !== "PGRST116") {
             console.error("Fetch error:", error);
-            return { error: error.message, attendance: null };
+            return { error: error.message, attendance: null, onLeave: isOnLeave, leaveInfo };
         }
 
-        return { success: true, attendance };
+        return { success: true, attendance, onLeave: isOnLeave, leaveInfo };
     } catch (err) {
         console.error("Exception:", err);
-        return { error: err instanceof Error ? err.message : "Failed to fetch attendance", attendance: null };
+        return { error: err instanceof Error ? err.message : "Failed to fetch attendance", attendance: null, onLeave: false };
     }
 }
 

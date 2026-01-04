@@ -371,8 +371,61 @@ export async function approveLeaveRequest(requestId: string) {
             }
         }
 
+        // Create attendance records with 'on_leave' status for all leave dates
+        const startDate = new Date(request.start_date);
+        const endDate = new Date(request.end_date);
+        const attendanceRecords = [];
+
+        for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+            const dateStr = date.toISOString().split('T')[0];
+            attendanceRecords.push({
+                profile_id: request.profile_id,
+                date: dateStr,
+                status: 'on_leave',
+                check_in_time: null,
+                check_out_time: null
+            });
+        }
+
+        // Insert or update attendance records for leave days
+        for (const record of attendanceRecords) {
+            // Check if attendance record already exists for this date
+            const { data: existingAttendance } = await supabase
+                .from('attendance')
+                .select('id')
+                .eq('profile_id', record.profile_id)
+                .eq('date', record.date)
+                .single();
+
+            if (existingAttendance?.id) {
+                // Update existing record to on_leave
+                await supabase
+                    .from('attendance')
+                    .update({ status: 'on_leave' })
+                    .eq('id', existingAttendance.id);
+            } else {
+                // Create new on_leave attendance record
+                await supabase
+                    .from('attendance')
+                    .insert(record);
+            }
+        }
+
+        console.log("Created/updated attendance records for leave period:", attendanceRecords.length, "days");
+
+        // Update employee's attendance_status to on_leave if leave includes today
+        const today = new Date().toISOString().split('T')[0];
+        if (request.start_date <= today && request.end_date >= today) {
+            await supabase
+                .from('profiles')
+                .update({ attendance_status: 'on_leave' })
+                .eq('id', request.profile_id);
+            console.log("Updated profile attendance_status to on_leave");
+        }
+
         revalidatePath('/dashboard/admin/leaves');
         revalidatePath('/dashboard/leaves');
+        revalidatePath('/dashboard/employees');
 
         return { success: true, message: "Leave request approved" };
 
